@@ -9,7 +9,7 @@ resource "google_project_iam_member" "cloud_scheduler_iam" {
 resource "google_compute_instance_iam_member" "app_engine_iam" {
   project        = "kayprjct01-358115"
   zone           = "europe-west2-c"
-  instance_name  = "instance-1"
+  instance_name  = "instance-3"
   role           = "roles/compute.instanceAdmin"
   member         = "serviceAccount:763503286874-compute@developer.gserviceaccount.com"
 }
@@ -19,7 +19,7 @@ resource "google_cloud_scheduler_job" "stop_instances" {
   name     = "stop-instances"
   project        = "kayprjct01-358115"
   region = "europe-west2"
-  schedule = "0 18 * * 1-5" # Run at 6pm on weekdays
+  schedule = "*/30 * * * *" # Run every 30mins
   time_zone = "Greenwich"
 
   http_target {
@@ -38,7 +38,7 @@ resource "google_cloud_scheduler_job" "start_instances" {
   name     = "start-instances"
   project        = "kayprjct01-358115"
   region = "europe-west2"
-  schedule = "0 9 * * 1-5" # Run at 9am on weekdays
+  schedule = "0 * * * *" # Run every hour
   time_zone = "Greenwich"
 
   http_target {
