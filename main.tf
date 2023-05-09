@@ -1,53 +1,57 @@
-# Grant Cloud Scheduler service account permission to invoke Compute Engine instances
-resource "google_project_iam_member" "cloud_scheduler_iam" {
-  project = "kayprjct01-358115"
-  role    = "roles/cloudscheduler.admin"
-  member  = "serviceAccount:763503286874-compute@developer.gserviceaccount.com"
-}
+resource "google_compute_instance" "default" {
+  name         = "sandbox"
+  machine_type = "e2-medium"
+  zone         = "europe-west2-c"
 
-# Grant Compute Engine default service account permission to stop and start instances
-resource "google_compute_instance_iam_member" "app_engine_iam" {
-  project        = "kayprjct01-358115"
-  zone           = "europe-west2-c"
-  instance_name  = "instance-3"
-  role           = "roles/compute.instanceAdmin"
-  member         = "serviceAccount:763503286874-compute@developer.gserviceaccount.com"
-}
+  tags = ["foo", "bar"]
 
-# Schedule stopping of Compute Engine instances
-resource "google_cloud_scheduler_job" "stop_instances" {
-  name     = "stop-instances"
-  project        = "kayprjct01-358115"
-  region = "europe-west2"
-  schedule = "*/30 * * * *" # Run every 30mins
-  time_zone = "Greenwich"
-
-  http_target {
-    uri     = "https://www.googleapis.com/compute/v1/projects/${var.project_id}/zones/${var.zone}/instances/${var.instance_name}/stop"
-    headers = {
-      "Content-Type" = "application/json"
+  boot_disk {
+    initialize_params {
+      image = "debian-cloud/debian-11"
+      labels = {
+        my_label = "value"
+      }
     }
-    http_method = "POST"
   }
 
-  #service_account_email = google_compute_engine_default_service_account.default.email
-}
+  // Local SSD disk
+#   scratch_disk {
+#     interface = "SCSI"
+#   }
 
-# Schedule starting of Compute Engine instances
-resource "google_cloud_scheduler_job" "start_instances" {
-  name     = "start-instances"
-  project        = "kayprjct01-358115"
-  region = "europe-west2"
-  schedule = "0 * * * *" # Run every hour
-  time_zone = "Greenwich"
+  network_interface {
+    network = "default"
 
-  http_target {
-    uri     = "https://www.googleapis.com/compute/v1/projects/${var.project_id}/zones/${var.zone}/instances/${var.instance_name}/start"
-    headers = {
-      "Content-Type" = "application/json"
+    access_config {
+      // Ephemeral public IP
     }
-    http_method = "POST"
   }
 
-  #service_account_email = google_compute_engine_default_service_account.default.email
+  metadata = {
+    foo = "bar"
+  }
+
+  metadata_startup_script = "echo hi > /test.txt"
+
+  service_account {
+    email  = "763503286874-compute@developer.gserviceaccount.com"
+    scopes = ["cloud-platform"]
+  }
+
+  #depends_on = [google_compute_resource_policy.hourly.id]
+}
+
+resource "google_compute_resource_policy" "hourly" {
+  name   = "gce-policy"
+  region = "europe-west2"
+  description = "Start and stop instances"
+  instance_schedule_policy {
+    vm_start_schedule {
+      schedule = "0 14 * * *"
+    }
+    vm_stop_schedule {
+      schedule = "0 16 * * *"
+    }
+    time_zone = "Greenwich"
+  }
 }
